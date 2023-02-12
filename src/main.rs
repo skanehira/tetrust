@@ -2,7 +2,10 @@
 mod block;
 mod game;
 
-use game::{draw, erase_line, fix_block, is_collision, move_block, Game, Position};
+use game::{
+    draw, erase_line, fix_block, gameover, is_collision, move_block, quit, rotate_left,
+    rotate_right, spawn_block, Game, Position,
+};
 use getch_rs::{Getch, Key};
 use std::sync::{Arc, Mutex};
 use std::{thread, time};
@@ -22,15 +25,17 @@ fn main() {
                 y: game.pos.y + 1,
             };
 
-            if !is_collision(&game.field, &new_pos, game.block) {
+            if !is_collision(&game.field, &new_pos, &game.block) {
                 game.pos = new_pos;
             } else {
                 // ブロックを固定
                 fix_block(&mut game);
                 // 行削除
                 erase_line(&mut game.field);
-                game.pos = Position { x: 4, y: 0 };
-                game.block = rand::random();
+
+                if spawn_block(&mut game).is_err() {
+                    gameover(&game);
+                }
             }
             draw(&game);
         });
@@ -66,10 +71,18 @@ fn main() {
                 move_block(&mut game, new_pos);
                 draw(&game);
             }
+            Ok(Key::Char('x')) => {
+                let mut game = game.lock().unwrap();
+                rotate_right(&mut game);
+                draw(&game);
+            }
+            Ok(Key::Char('z')) => {
+                let mut game = game.lock().unwrap();
+                rotate_left(&mut game);
+                draw(&game);
+            }
             Ok(Key::Char('q')) => {
-                // カーソルを再表示
-                println!("\x1b[?25h");
-                return;
+                quit();
             }
             _ => (),
         }
